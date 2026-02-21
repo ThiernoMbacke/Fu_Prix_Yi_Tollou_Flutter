@@ -21,7 +21,9 @@ dependencies:
   provider: ^6.1.2
 
   # Backend / Database
-  supabase_flutter: ^2.5.0
+  supabase_flutter: ^2.5.0   # Gardé pour Storage/Realtime et lecture données
+  dio: ^5.4.0
+  flutter_secure_storage: ^9.0.0
 
   # Utils
   shared_preferences: ^2.2.3

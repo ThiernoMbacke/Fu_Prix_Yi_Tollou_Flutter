@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: prix-yi-backend
+  datasource:
+    url: jdbc:postgresql://${SUPABASE_DB_HOST:db.byrlinkbmyhfvdwqhhlm.supabase.co}:${SUPABASE_DB_PORT:5432}/${SUPABASE_DB_NAME:postgres}
+    username: ${SUPABASE_DB_USER:postgres}
+    password: ${SUPABASE_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: public
+        format_sql: true
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-change-in-production-min-32-chars}
+  access-token-expiration: 900000   # 15 min
+  refresh-token-expiration: 604800000  # 7 jours
+
+sms:
+  provider: ${SMS_PROVIDER:infobip}
+  infobip:
+    api-key: ${INFOBIP_API_KEY:}
+    base-url: https://api.infobip.com
+  orange:
+    client-id: ${ORANGE_CLIENT_ID:}
+    client-secret: ${ORANGE_CLIENT_SECRET:}
+    sender-number: ${ORANGE_SENDER:}
+
+rate-limit:
+  otp-per-phone: 3
+  otp-per-ip: 5
+  window-minutes: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized

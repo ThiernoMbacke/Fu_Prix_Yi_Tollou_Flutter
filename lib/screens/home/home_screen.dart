@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final isAuthenticated = authProvider.isAuthenticated;
+    final isAuthenticated = authProvider.isAuthenticatedSync;
 
     return Scaffold(
       appBar: AppBar(
@@ -89,17 +89,16 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: Icon(isAuthenticated ? Icons.person : Icons.login),
-onPressed: () {
-  if (isAuthenticated) {
+            onPressed: () {
+              if (isAuthenticated) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
-  } else {
-    Navigator.pushNamed(context, '/auth-method');
-  }
-},
-
+              } else {
+                Navigator.pushNamed(context, '/auth-method');
+              }
+            },
           ),
         ],
       ),

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/database_service.dart';
-import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/app_theme.dart';
 
@@ -18,7 +18,6 @@ class AddPrixScreen extends StatefulWidget {
 
 class _AddPrixScreenState extends State<AddPrixScreen> {
   final DatabaseService _dbService = DatabaseService();
-  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _prixController = TextEditingController();
 
@@ -91,16 +90,15 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
 
     try {
       final prix = double.parse(_prixController.text);
+      final apiService = context.read<ApiService>();
 
-      await _dbService.addPrix(
+      await apiService.addPrix(
         produitId: widget.produit.id,
         marcheId: _selectedMarcheId!,
         prix: prix,
       );
+      // Le backend incrémente les contributions automatiquement
 
-      // Incrémenter les contributions
-      await _authService.incrementContributions();
-      
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,10 +108,8 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
         ),
       );
 
-      // Recharger le profil
       context.read<AuthProvider>().loadUserProfile();
 
-      // Retour avec succès
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;

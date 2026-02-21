@@ -13,7 +13,20 @@ class UserProfile {
     this.createdAt,
   });
 
-  // Convert Supabase JSON → UserProfile object
+  /// Backend API (camelCase)
+  factory UserProfile.fromApiJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id']?.toString() ?? '',
+      phone: json['phone'] as String?,
+      nom: json['nom'] as String?,
+      contributionsCount: json['contributionsCount'] as int? ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+    );
+  }
+
+  /// Supabase JSON (snake_case)
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'] as String,

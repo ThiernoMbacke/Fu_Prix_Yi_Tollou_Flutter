@@ -60,7 +60,7 @@ class _ProduitDetailScreenState extends State<ProduitDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final isAuthenticated = authProvider.isAuthenticated;
+    final isAuthenticated = authProvider.isAuthenticatedSync;
     final numberFormat = NumberFormat('#,##0', 'fr_FR');
 
     return Scaffold(

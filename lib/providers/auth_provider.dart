@@ -1,12 +1,13 @@
 // lib/providers/auth_provider.dart
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../models/user_profile.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  AuthProvider({required AuthService authService}) : _authService = authService {
+    _init();
+  }
+  final AuthService _authService;
 
   UserProfile? _userProfile;
   bool _isLoading = false;
@@ -15,28 +16,19 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAuthenticated => _authService.isAuthenticated;
 
-  AuthProvider() {
-    _init();
-  }
+  /// Synchrone : vrai si le profil est déjà chargé (utiliser dans l'UI).
+  bool get isAuthenticatedSync => _userProfile != null;
 
-  void _init() {
-    // Écouter les changements d'authentification
-    _authService.authStateChanges.listen((AuthState state) {
-      final session = state.session;
+  Future<bool> get isAuthenticated => _authService.isAuthenticated;
 
-      if (session != null) {
-        loadUserProfile();
-      } else {
-        _userProfile = null;
-        notifyListeners();
-      }
-    });
-    
-    // Charger le profil si l'utilisateur est déjà connecté
-    if (_authService.isAuthenticated) {
-      loadUserProfile();
+  void _init() async {
+    final authenticated = await _authService.isAuthenticated;
+    if (authenticated) {
+      await loadUserProfile();
+    } else {
+      _userProfile = null;
+      notifyListeners();
     }
   }
 
@@ -46,14 +38,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Erreur chargement profil: $e');
+      _userProfile = null;
+      notifyListeners();
     }
   }
 
-  // ========================================
-  // AUTHENTIFICATION PAR TÉLÉPHONE (TWILIO)
-  // ========================================
-
-  /// Envoyer le code OTP via Twilio
+  /// Envoyer le code OTP (téléphone) via le backend.
   Future<void> signInWithPhone(String phoneNumber) async {
     _isLoading = true;
     _error = null;
@@ -61,7 +51,6 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final result = await _authService.signInWithPhone(phoneNumber);
-      
       if (result['success'] != true) {
         _error = result['message'] ?? 'Erreur lors de l\'envoi du code';
       }
@@ -73,7 +62,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Vérifier le code OTP (téléphone) avec Twilio
+  /// Vérifier le code OTP (téléphone) et récupérer le profil.
   Future<void> verifyOTP({
     required String phone,
     required String token,
@@ -87,61 +76,32 @@ class AuthProvider extends ChangeNotifier {
       await loadUserProfile();
     } catch (e) {
       _error = e.toString();
+      notifyListeners();
+      rethrow;
     }
 
     _isLoading = false;
     notifyListeners();
   }
 
-  // ========================================
-  // AUTHENTIFICATION PAR EMAIL (SUPABASE)
-  // ========================================
-
-  /// Envoyer le code OTP par email
+  /// Envoyer OTP par email (désactivé si vous n'utilisez que le backend téléphone).
   Future<void> sendOtpToEmail(String email) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
-    try {
-      await _authService.signInWithEmail(email);
-    } catch (e) {
-      _error = e.toString();
-    }
-
+    _error = 'Connexion par email non disponible. Utilisez le numéro de téléphone.';
     _isLoading = false;
     notifyListeners();
   }
 
-  /// Vérifier le code OTP pour l'email
+  /// Vérifier OTP email (désactivé).
   Future<void> verifyEmailOtp({
     required String email,
     required String token,
   }) async {
-    _isLoading = true;
-    _error = null;
+    _error = 'Connexion par email non disponible.';
     notifyListeners();
-
-    try {
-      await _authService.verifyEmailOtp(
-        email: email,
-        token: token,
-      );
-      
-      await loadUserProfile();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
-
-  // ========================================
-  // GESTION DU PROFIL
-  // ========================================
 
   Future<void> updateProfile({String? nom}) async {
     _isLoading = true;
