@@ -11,6 +11,7 @@ class ApiConfig {
   static const String verifyOtpPath = '/api/auth/verify-otp';
   static const String refreshTokenPath = '/api/auth/refresh-token';
   static const String logoutPath = '/api/auth/logout';
+  static const String demoLoginPath = '/api/auth/demo';
   static const String mePath = '/api/users/me';
   static const String prixPath = '/api/prix';
 }

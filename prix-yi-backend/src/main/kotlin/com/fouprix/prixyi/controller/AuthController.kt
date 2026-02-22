@@ -1,6 +1,7 @@
 package com.fouprix.prixyi.controller
 
 import com.fouprix.prixyi.model.dto.AuthResponse
+import com.fouprix.prixyi.model.dto.DemoLoginRequest
 import com.fouprix.prixyi.model.dto.OtpVerifyRequest
 import com.fouprix.prixyi.model.dto.RefreshTokenRequest
 import com.fouprix.prixyi.model.dto.SendOtpRequest
@@ -40,5 +41,12 @@ class AuthController(private val authService: AuthService) {
         val refreshToken = body?.get("refreshToken")
         authService.logout(refreshToken)
         return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    /** Connexion démo sans OTP : body { "demoUser": "test1" } ou "test2". Pour démo uniquement. */
+    @PostMapping("/demo")
+    fun demoLogin(@Valid @RequestBody request: DemoLoginRequest): ResponseEntity<AuthResponse> {
+        val response = authService.demoLogin(request.demoUser)
+        return ResponseEntity.ok(response)
     }
 }

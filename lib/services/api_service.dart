@@ -91,6 +91,17 @@ class ApiService {
     }
   }
 
+  /// POST /api/auth/demo → connexion sans code (test1 ou test2)
+  Future<AuthTokens> demoLogin(String demoUser) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConfig.demoLoginPath,
+      data: {'demoUser': demoUser},
+    );
+    final data = response.data;
+    if (data == null) throw Exception('Réponse vide');
+    return AuthTokens.fromJson(data);
+  }
+
   /// POST /api/auth/verify-otp → tokens + user
   Future<AuthTokens> verifyOtp(String phoneNumber, String code) async {
     final response = await _dio.post<Map<String, dynamic>>(

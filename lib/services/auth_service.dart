@@ -57,6 +57,15 @@ class AuthService {
     // No-op côté client; le backend incrémente quand on appelle addPrix.
   }
 
+  /// Connexion démo sans code (test1 ou test2). Pour démo uniquement.
+  Future<void> signInWithDemo(String demoUser) async {
+    final tokens = await _apiService.demoLogin(demoUser);
+    await _tokenStorage.saveTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    );
+  }
+
   /// Déconnexion (révoque le refresh token et vide le stockage).
   Future<void> signOut() async {
     await _apiService.logout();

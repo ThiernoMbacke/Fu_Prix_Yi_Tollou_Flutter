@@ -103,6 +103,26 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Connexion démo sans code (test1 ou test2). Pour démo.
+  Future<bool> signInWithDemo(String demoUser) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService.signInWithDemo(demoUser);
+      await loadUserProfile();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updateProfile({String? nom}) async {
     _isLoading = true;
     _error = null;

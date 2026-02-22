@@ -1,9 +1,40 @@
 // lib/screens/auth/auth_method_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:fu_prix_yi_tollou_tay/config/app_theme.dart';
+import '../../providers/auth_provider.dart';
+import '../home/home_screen.dart';
 
-class AuthMethodScreen extends StatelessWidget {
+class AuthMethodScreen extends StatefulWidget {
   const AuthMethodScreen({super.key});
+
+  @override
+  State<AuthMethodScreen> createState() => _AuthMethodScreenState();
+}
+
+class _AuthMethodScreenState extends State<AuthMethodScreen> {
+  bool _demoLoading = false;
+
+  Future<void> _connectDemo(String demoUser) async {
+    setState(() => _demoLoading = true);
+    final auth = context.read<AuthProvider>();
+    final ok = await auth.signInWithDemo(demoUser);
+    if (!mounted) return;
+    setState(() => _demoLoading = false);
+    if (ok) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Erreur connexion démo'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +66,6 @@ class AuthMethodScreen extends StatelessWidget {
                 ),
               ),
               
-              // Titre
               const Text(
                 'Choisissez votre méthode de connexion',
                 style: TextStyle(
@@ -47,7 +77,6 @@ class AuthMethodScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // Bouton Téléphone
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/phone-auth'),
                 icon: const Icon(Icons.phone_android),
@@ -62,7 +91,6 @@ class AuthMethodScreen extends StatelessWidget {
               
               const SizedBox(height: 16),
               
-              // Bouton Email
               OutlinedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/email-auth'),
                 icon: const Icon(Icons.email_outlined),
@@ -74,6 +102,64 @@ class AuthMethodScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'Mode démo (sans code)',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _demoLoading
+                          ? null
+                          : () => _connectDemo('test1'),
+                      icon: const Icon(Icons.person_outline, size: 20),
+                      label: const Text('Test 1'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _demoLoading
+                          ? null
+                          : () => _connectDemo('test2'),
+                      icon: const Icon(Icons.person_outline, size: 20),
+                      label: const Text('Test 2'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_demoLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
               
               const Spacer(),
             ],

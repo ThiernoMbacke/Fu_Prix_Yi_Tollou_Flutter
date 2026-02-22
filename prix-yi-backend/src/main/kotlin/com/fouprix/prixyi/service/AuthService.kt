@@ -100,4 +100,29 @@ class AuthService(
         }
     }
 
+    /** Connexion démo sans code OTP : deux utilisateurs test (test1, test2) pour démo. */
+    @Transactional
+    fun demoLogin(demoUser: String): AuthResponse {
+        val phone = when (demoUser) {
+            "test1" -> "+221770000001"
+            "test2" -> "+221770000002"
+            else -> throw IllegalArgumentException("demoUser invalide: $demoUser")
+        }
+        var user = userRepository.findByPhone(phone).orElse(null)
+            ?: userRepository.save(
+                User(phone = phone, nom = "Utilisateur Démo $demoUser", role = Role.USER)
+            )
+        val accessToken = jwtService.generateAccessToken(user)
+        val refreshTokenValue = jwtService.generateRefreshToken()
+        val expiresAt = Instant.now().plusMillis(jwtService.getRefreshTokenExpirationMs())
+        refreshTokenRepository.save(
+            RefreshToken(user = user, token = refreshTokenValue, expiresAt = expiresAt)
+        )
+        return AuthResponse(
+            accessToken = accessToken,
+            refreshToken = refreshTokenValue,
+            expiresIn = jwtService.getAccessTokenExpirationMs() / 1000,
+            user = UserDto.from(user),
+        )
+    }
 }

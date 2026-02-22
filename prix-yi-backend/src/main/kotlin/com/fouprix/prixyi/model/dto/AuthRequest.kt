@@ -23,3 +23,10 @@ data class RefreshTokenRequest(
     @field:NotBlank(message = "Le refresh token est requis")
     val refreshToken: String,
 )
+
+/** Connexion démo sans OTP : test1 ou test2. À n'utiliser qu'en démo. */
+data class DemoLoginRequest(
+    @field:NotBlank(message = "demoUser requis (test1 ou test2)")
+    @field:Pattern(regexp = "^(test1|test2)$", message = "demoUser doit être test1 ou test2")
+    val demoUser: String,
+)
