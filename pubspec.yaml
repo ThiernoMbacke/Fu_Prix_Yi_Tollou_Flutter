@@ -28,6 +28,7 @@ dependencies:
   # Utils
   shared_preferences: ^2.2.3
   url_launcher: ^6.2.6
+  device_info_plus: ^11.0.0
 
 dev_dependencies:
   flutter_test:

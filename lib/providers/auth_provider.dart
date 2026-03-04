@@ -1,4 +1,5 @@
 // lib/providers/auth_provider.dart
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../models/user_profile.dart';
@@ -21,6 +22,17 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticatedSync => _userProfile != null;
 
   Future<bool> get isAuthenticated => _authService.isAuthenticated;
+
+  static String _extractErrorMessage(dynamic e) {
+    if (e is DioException) {
+      final msg = e.response?.data;
+      if (msg is Map && msg['message'] != null) return msg['message'].toString();
+      if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
+        return 'Impossible de joindre le serveur. Vérifiez que le backend tourne (port 8080) et l\'URL dans api_config.dart (localhost ou 10.0.2.2 pour l\'émulateur).';
+      }
+    }
+    return e.toString();
+  }
 
   void _init() async {
     final authenticated = await _authService.isAuthenticated;
@@ -114,7 +126,7 @@ class AuthProvider extends ChangeNotifier {
       await loadUserProfile();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = _extractErrorMessage(e);
       notifyListeners();
       return false;
     } finally {

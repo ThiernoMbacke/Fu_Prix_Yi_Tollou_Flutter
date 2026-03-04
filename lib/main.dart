@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/api_config.dart';
 import 'config/supabase_config.dart';
 import 'config/app_theme.dart';
 import 'providers/auth_provider.dart';
@@ -49,6 +50,7 @@ class _AppLoaderState extends State<_AppLoader> {
 
   Future<void> _init() async {
     try {
+      await ApiConfig.init();
       await Supabase.initialize(
         url: SupabaseConfig.supabaseUrl,
         anonKey: SupabaseConfig.supabaseAnonKey,

@@ -7,3 +7,4 @@ class OtpInvalidException(message: String = "Code incorrect ou expiré.") : AppE
 class OtpRateLimitException(message: String = "Trop de demandes. Réessayez dans quelques minutes.") : AppException(message)
 class TokenExpiredException(message: String = "Session expirée.") : AppException(message)
 class UnauthorizedException(message: String = "Non authentifié.") : AppException(message)
+class InvalidPhoneException(message: String = "Numéro invalide. Entrez 9 chiffres (préfixes: 70, 71, 76, 77, 78).") : AppException(message)

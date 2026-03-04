@@ -49,24 +49,20 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     });
   }
 
-  /// Formate le numéro de téléphone au format sénégalais
+  /// Garde uniquement les chiffres (max 9) et formate en XX XXX XX XX
+  static const _senegalPrefixes = ['70', '71', '76', '77', '78'];
+
   String _formatPhoneNumber(String value) {
-    final cleaned = value.replaceAll(RegExp(r'[^\d+]'), '');
-    
-    if (cleaned.startsWith('+221') && cleaned.length > 4) {
-      final digits = cleaned.substring(4);
-      final parts = <String>['+221'];
-      
-      if (digits.length >= 2) parts.add(digits.substring(0, 2));
-      if (digits.length >= 5) parts.add(digits.substring(2, 5));
-      if (digits.length >= 7) parts.add(digits.substring(5, 7));
-      if (digits.length >= 9) parts.add(digits.substring(7, 9));
-      
-      return parts.join(' ');
-    }
-    
-    return cleaned;
+    final digits = value.replaceAll(RegExp(r'[^\d]'), '').substring(0, 9);
+    if (digits.isEmpty) return '';
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return '${digits.substring(0, 2)} ${digits.substring(2)}';
+    if (digits.length <= 7) return '${digits.substring(0, 2)} ${digits.substring(2, 5)} ${digits.substring(5)}';
+    return '${digits.substring(0, 2)} ${digits.substring(2, 5)} ${digits.substring(5, 7)} ${digits.substring(7)}';
   }
+
+  /// Retourne les 9 chiffres bruts pour envoi API (sans espaces)
+  String _phoneDigits(String value) => value.replaceAll(RegExp(r'[^\d]'), '').substring(0, 9);
 
   /// Retourne un message d'erreur user-friendly
   String _getErrorMessage(dynamic error) {
@@ -91,7 +87,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final phoneNumber = _phoneController.text.trim();
+      final phoneNumber = _phoneDigits(_phoneController.text);
       await context.read<AuthProvider>().signInWithPhone(phoneNumber);
 
       if (!mounted) return;
@@ -153,7 +149,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     });
 
     try {
-      final phone = _phoneController.text.trim();
+      final phone = _phoneDigits(_phoneController.text);
       final token = _otpController.text.trim();
 
       await context.read<AuthProvider>().verifyOTP(phone: phone, token: token);
@@ -255,7 +251,7 @@ void _reset() {
 
                 const SizedBox(height: 32),
 
-                // Champ téléphone
+                // Champ téléphone (9 chiffres, préfixes 70, 71, 76, 77, 78)
                 if (!_isOtpSent)
                   TextFormField(
                     controller: _phoneController,
@@ -264,17 +260,25 @@ void _reset() {
                     textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
                       labelText: 'Numéro de téléphone',
-                      hintText: '+221 77 123 45 67',
+                      hintText: '77 123 45 67',
                       prefixIcon: Icon(Icons.phone),
-                      helperText: 'Format: +221 XX XXX XX XX',
+                      helperText: '9 chiffres (70, 71, 76, 77, 78)',
                     ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s]')),
-                      LengthLimitingTextInputFormatter(17), // +221 XX XXX XX XX
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11), // 9 chiffres affichés en XX XXX XX XX
+                      TextInputFormatter.withFunction((old, new_) {
+                        final digits = new_.text.replaceAll(RegExp(r'[^\d]'), '').substring(0, 9);
+                        final formatted = digits.isEmpty ? '' : _formatPhoneNumber(digits);
+                        return TextEditingValue(
+                          text: formatted,
+                          selection: TextSelection.collapsed(offset: formatted.length),
+                        );
+                      }),
                     ],
                     onChanged: (value) {
-                      // Formatage en temps réel
-                      final formatted = _formatPhoneNumber(value);
+                      final digits = value.replaceAll(RegExp(r'[^\d]'), '').substring(0, 9);
+                      final formatted = _formatPhoneNumber(digits);
                       if (formatted != value) {
                         _phoneController.value = TextEditingValue(
                           text: formatted,
@@ -283,18 +287,13 @@ void _reset() {
                       }
                     },
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer un numéro de téléphone';
+                      final digits = value == null ? '' : value.replaceAll(RegExp(r'[^\d]'), '');
+                      if (digits.isEmpty) return 'Veuillez entrer un numéro';
+                      if (digits.length != 9) return '9 chiffres requis (ex: 77 123 45 67)';
+                      final prefix = digits.substring(0, 2);
+                      if (!_senegalPrefixes.contains(prefix)) {
+                        return 'Préfixe invalide. Utilisez 70, 71, 76, 77 ou 78.';
                       }
-                      
-                      final cleaned = value.replaceAll(RegExp(r'\s'), '');
-                      
-                      // Validation pour le format sénégalais
-                      final phoneRegex = RegExp(r'^\+221[0-9]{9}$');
-                      if (!phoneRegex.hasMatch(cleaned)) {
-                        return 'Format invalide. Ex: +221 77 123 45 67';
-                      }
-                      
                       return null;
                     },
                   ),

@@ -5,13 +5,13 @@ import jakarta.validation.constraints.Pattern
 
 data class SendOtpRequest(
     @field:NotBlank(message = "Le numéro est requis")
-    @field:Pattern(regexp = "^\\+221[0-9]{9}$", message = "Format invalide. Ex: +221771234567")
+    @field:Pattern(regexp = "^[0-9+\\s]{8,15}$", message = "Entrez 9 chiffres (ex: 77 123 45 67). Préfixes: 70, 71, 76, 77, 78.")
     val phoneNumber: String,
 )
 
 data class OtpVerifyRequest(
     @field:NotBlank(message = "Le numéro est requis")
-    @field:Pattern(regexp = "^\\+221[0-9]{9}$", message = "Format invalide")
+    @field:Pattern(regexp = "^[0-9+\\s]{8,15}$", message = "Entrez 9 chiffres. Préfixes: 70, 71, 76, 77, 78.")
     val phoneNumber: String,
 
     @field:NotBlank(message = "Le code est requis")

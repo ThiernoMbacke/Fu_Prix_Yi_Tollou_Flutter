@@ -1,5 +1,6 @@
 package com.fouprix.prixyi.service
 
+import com.fouprix.prixyi.exception.InvalidPhoneException
 import com.fouprix.prixyi.exception.OtpBlockedException
 import com.fouprix.prixyi.exception.OtpInvalidException
 import com.fouprix.prixyi.exception.TokenExpiredException
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.*
-import javax.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletRequest
 
 @Service
 class AuthService(
@@ -32,8 +33,8 @@ class AuthService(
 
     @Transactional
     fun sendOtp(request: SendOtpRequest, httpRequest: HttpServletRequest?) {
-        val phone = request.phoneNumber.replace("\\s".toRegex(), "")
-        require(ValidationUtils.isValidSenegalPhone(phone)) { "Numéro invalide" }
+        val phone = ValidationUtils.normalizeSenegalPhone(request.phoneNumber)
+            ?: throw InvalidPhoneException()
         val ip = httpRequest?.remoteAddr
         rateLimiter.checkIp(ip)
         rateLimiter.checkAndRecordPhone(phone, ip)
@@ -44,7 +45,8 @@ class AuthService(
 
     @Transactional
     fun verifyOtp(request: OtpVerifyRequest): AuthResponse {
-        val phone = request.phoneNumber.replace("\\s".toRegex(), "")
+        val phone = ValidationUtils.normalizeSenegalPhone(request.phoneNumber)
+            ?: throw InvalidPhoneException()
         val code = request.code
         if (!otpService.verify(phone, code)) throw OtpInvalidException()
         var user = userRepository.findByPhone(phone).orElse(null)

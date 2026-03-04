@@ -20,23 +20,31 @@ class GlobalExceptionHandler {
     fun handleOtpInvalid(ex: AppException): ResponseEntity<ErrorBody> =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody(ex.message ?: "Code invalide"))
 
+    @ExceptionHandler(InvalidPhoneException::class)
+    fun handleInvalidPhone(ex: AppException): ResponseEntity<ErrorBody> =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody(ex.message ?: "Numéro invalide"))
+
     @ExceptionHandler(TokenExpiredException::class, UnauthorizedException::class)
     fun handleUnauthorized(ex: AppException): ResponseEntity<ErrorBody> =
-        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorBody(ex.message ?: "Non authentifié"))
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorBody(ex.message ?: "Non authentifie"))
 
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDenied(ex: AccessDeniedException): ResponseEntity<ErrorBody> =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorBody("Accès refusé"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorBody("Acces refuse"))
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorBody> {
-        val errors = ex.bindingResult.allErrors.associate { err ->
-            (err as? FieldError)?.field to (err.defaultMessage ?: "invalide")
-        }
+        val errors = ex.bindingResult.allErrors
+            .filterIsInstance<FieldError>()
+            .associate { err -> (err.field ?: "field") to (err.defaultMessage ?: "invalide") }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorBody("Validation échouée", errors)
+            ErrorBody("Validation echouee", errors)
         )
     }
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ErrorBody> =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody(ex.message ?: "Requête invalide"))
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorBody> =
