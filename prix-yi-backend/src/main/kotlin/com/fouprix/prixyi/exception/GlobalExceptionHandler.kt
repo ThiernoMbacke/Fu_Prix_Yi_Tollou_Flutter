@@ -47,10 +47,12 @@ class GlobalExceptionHandler {
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody(ex.message ?: "Requête invalide"))
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneric(ex: Exception): ResponseEntity<ErrorBody> =
-        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-            ErrorBody("Une erreur est survenue")
+    fun handleGeneric(ex: Exception): ResponseEntity<ErrorBody> {
+        val message = ex.message ?: "Une erreur est survenue"
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+            ErrorBody(message)
         )
+    }
 }
 
 data class ErrorBody(

@@ -145,16 +145,35 @@ class ApiService {
   }
 
   /// POST /api/prix (ajout prix, JWT requis)
+  /// Si [isPremium] est vrai, [contactPhone], [contactLocation] ou [contactLat]/[contactLng],
+  /// [paymentMethod] et [paymentReference] doivent être renseignés.
   Future<void> addPrix({
     required String produitId,
     required String marcheId,
     required double prix,
+    bool isPremium = false,
+    String? contactPhone,
+    String? contactLocation,
+    double? contactLat,
+    double? contactLng,
+    String? paymentMethod,
+    String? paymentReference,
   }) async {
-    await _dio.post(ApiConfig.prixPath, data: {
+    final data = <String, dynamic>{
       'produitId': produitId,
       'marcheId': marcheId,
       'prix': prix,
-    });
+      'isPremium': isPremium,
+    };
+    if (isPremium) {
+      data['contactPhone'] = contactPhone;
+      data['contactLocation'] = contactLocation;
+      if (contactLat != null) data['contactLat'] = contactLat;
+      if (contactLng != null) data['contactLng'] = contactLng;
+      data['paymentMethod'] = paymentMethod;
+      data['paymentReference'] = paymentReference;
+    }
+    await _dio.post(ApiConfig.prixPath, data: data);
   }
 
   /// Vérifie si on a un token (sans appeler le serveur).

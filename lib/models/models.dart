@@ -130,7 +130,13 @@ class Prix {
   final DateTime date;
   final String? createdBy;
   final DateTime? createdAt;
-  
+  /// Option premium : contact de l'annonceur
+  final String? contactPhone;
+  final String? contactLocation;
+  final double? contactLat;
+  final double? contactLng;
+  final bool isPremium;
+
   // Relations
   Produit? produit;
   Marche? marche;
@@ -143,6 +149,11 @@ class Prix {
     required this.date,
     this.createdBy,
     this.createdAt,
+    this.contactPhone,
+    this.contactLocation,
+    this.contactLat,
+    this.contactLng,
+    this.isPremium = false,
     this.produit,
     this.marche,
   });
@@ -158,6 +169,11 @@ class Prix {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
+      contactPhone: json['contact_phone'] as String?,
+      contactLocation: json['contact_location'] as String?,
+      contactLat: (json['contact_lat'] as num?)?.toDouble(),
+      contactLng: (json['contact_lng'] as num?)?.toDouble(),
+      isPremium: json['is_premium'] as bool? ?? false,
       produit: json['produits'] != null
           ? Produit.fromJson(json['produits'] as Map<String, dynamic>)
           : null,

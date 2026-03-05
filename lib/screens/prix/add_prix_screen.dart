@@ -1,11 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:latlong2/latlong.dart';
 import '../../models/models.dart';
 import '../../services/database_service.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/app_theme.dart';
+import 'map_picker_screen.dart';
 
 class AddPrixScreen extends StatefulWidget {
   final Produit produit;
@@ -20,6 +23,9 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
   final DatabaseService _dbService = DatabaseService();
   final _formKey = GlobalKey<FormState>();
   final _prixController = TextEditingController();
+  final _contactPhoneController = TextEditingController();
+  final _contactLocationController = TextEditingController();
+  final _paymentReferenceController = TextEditingController();
 
   List<Ville> _villes = [];
   List<Marche> _marches = [];
@@ -29,6 +35,10 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
   String? _selectedMarcheId;
   bool _isLoading = false;
   bool _isLoadingData = true;
+  bool _isPremium = false;
+  String? _paymentMethod; // 'ORANGE_MONEY', 'WAVE', 'CARD'
+  double? _contactLat;
+  double? _contactLng;
 
   @override
   void initState() {
@@ -39,6 +49,9 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
   @override
   void dispose() {
     _prixController.dispose();
+    _contactPhoneController.dispose();
+    _contactLocationController.dispose();
+    _paymentReferenceController.dispose();
     super.dispose();
   }
 
@@ -46,6 +59,12 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
     try {
       final villes = await _dbService.getVilles();
       final marches = await _dbService.getMarches();
+      // Pré-remplir le téléphone de contact avec le numéro du profil, si dispo.
+      final auth = context.read<AuthProvider>();
+      final userPhone = auth.userProfile?.phone;
+      if (userPhone != null && userPhone.isNotEmpty) {
+        _contactPhoneController.text = userPhone;
+      }
 
       setState(() {
         _villes = villes;
@@ -92,10 +111,73 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
       final prix = double.parse(_prixController.text);
       final apiService = context.read<ApiService>();
 
+      bool isPremium = _isPremium;
+      String? contactPhone;
+      String? contactLocation;
+      String? paymentMethod;
+      String? paymentReference;
+
+      if (isPremium) {
+        contactPhone = _contactPhoneController.text.trim();
+        contactLocation = _contactLocationController.text.trim();
+        if (contactLocation.isEmpty && _contactLat != null && _contactLng != null) {
+          contactLocation = '${_contactLat!.toStringAsFixed(5)}, ${_contactLng!.toStringAsFixed(5)}';
+        }
+        paymentMethod = _paymentMethod;
+        paymentReference = _paymentReferenceController.text.trim();
+
+        final hasLocation = contactLocation.isNotEmpty || (_contactLat != null && _contactLng != null);
+        if (contactPhone.isEmpty || !hasLocation || paymentMethod == null || paymentReference.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Pour l\'option premium : téléphone, localisation (texte ou carte), moyen de paiement et numéro de carte/téléphone.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // Confirmation de paiement (simulation)
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Confirmer le paiement'),
+            content: const Text(
+              'Vous allez payer 2000 FCFA pour mettre ce prix en avant, avec votre numéro et votre localisation visibles.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Annuler'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Payer 2000 FCFA'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed != true) {
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
       await apiService.addPrix(
         produitId: widget.produit.id,
         marcheId: _selectedMarcheId!,
         prix: prix,
+        isPremium: isPremium,
+        contactPhone: contactPhone,
+        contactLocation: contactLocation,
+        contactLat: _contactLat,
+        contactLng: _contactLng,
+        paymentMethod: paymentMethod,
+        paymentReference: paymentReference,
       );
       // Le backend incrémente les contributions automatiquement
 
@@ -113,10 +195,14 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-
+      String msg = 'Erreur: $e';
+      if (e is DioException && e.response?.data is Map) {
+        final data = e.response!.data as Map<String, dynamic>;
+        if (data['message'] != null) msg = data['message'].toString();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: $e'),
+          content: Text(msg),
           backgroundColor: Colors.red,
         ),
       );
@@ -284,7 +370,151 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
                       },
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Option premium
+                    SwitchListTile.adaptive(
+                      value: _isPremium,
+                      onChanged: (v) {
+                        setState(() => _isPremium = v);
+                      },
+                      title: const Text('Mettre ce prix en avant (2000 FCFA)'),
+                      subtitle: const Text(
+                        'Votre numéro et votre localisation seront visibles pour être contacté directement.',
+                      ),
+                      secondary: const Icon(Icons.star, color: Colors.amber),
+                    ),
+
+                    if (_isPremium) ...[
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _contactLocationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Localisation (boutique, quartier...)',
+                          prefixIcon: Icon(Icons.location_on),
+                          hintText: 'Ex: Marché Kermel, Dakar',
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          LatLng? initial;
+                          if (_contactLat != null && _contactLng != null) {
+                            initial = LatLng(_contactLat!, _contactLng!);
+                          }
+                          final result = await Navigator.push<LatLng>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MapPickerScreen(initialPosition: initial),
+                            ),
+                          );
+                          if (result != null && mounted) {
+                            setState(() {
+                              _contactLat = result.latitude;
+                              _contactLng = result.longitude;
+                              if (_contactLocationController.text.trim().isEmpty) {
+                                _contactLocationController.text =
+                                    '${result.latitude.toStringAsFixed(5)}, ${result.longitude.toStringAsFixed(5)}';
+                              }
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.map),
+                        label: Text(
+                          _contactLat != null && _contactLng != null
+                              ? 'Position : ${_contactLat!.toStringAsFixed(4)}, ${_contactLng!.toStringAsFixed(4)}'
+                              : 'Choisir sur la carte',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _contactPhoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Numéro de téléphone de contact',
+                          prefixIcon: Icon(Icons.phone),
+                        ),
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Moyen de paiement (simulation)',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Orange Money'),
+                            selected: _paymentMethod == 'ORANGE_MONEY',
+                            onSelected: (selected) {
+                              setState(() {
+                                _paymentMethod = selected ? 'ORANGE_MONEY' : null;
+                                _paymentReferenceController.clear();
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text('Wave'),
+                            selected: _paymentMethod == 'WAVE',
+                            onSelected: (selected) {
+                              setState(() {
+                                _paymentMethod = selected ? 'WAVE' : null;
+                                _paymentReferenceController.clear();
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text('Carte bancaire'),
+                            selected: _paymentMethod == 'CARD',
+                            onSelected: (selected) {
+                              setState(() {
+                                _paymentMethod = selected ? 'CARD' : null;
+                                _paymentReferenceController.clear();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_paymentMethod != null)
+                        TextFormField(
+                          controller: _paymentReferenceController,
+                          decoration: InputDecoration(
+                            labelText: _paymentMethod == 'CARD'
+                                ? 'Numéro de carte (16 chiffres)'
+                                : 'Numéro pour le paiement (9 chiffres)',
+                            hintText: _paymentMethod == 'CARD'
+                                ? '4242 4242 4242 4242'
+                                : '77 123 45 67',
+                            prefixIcon: Icon(
+                              _paymentMethod == 'CARD' ? Icons.credit_card : Icons.phone,
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: _paymentMethod == 'CARD' ? 19 : 11,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: Colors.orange.shade700),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Simulation — aucun prélèvement réel. En production : Orange Money / Wave / passerelle carte.',
+                              style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    const SizedBox(height: 8),
 
                     // Info
                     Container(
@@ -302,12 +532,25 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Le prix sera visible par tous les utilisateurs',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue.shade900,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Le prix sera visible par tous les utilisateurs.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Avec l\'option premium, votre contact et localisation sont affichés pour être appelé directement.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

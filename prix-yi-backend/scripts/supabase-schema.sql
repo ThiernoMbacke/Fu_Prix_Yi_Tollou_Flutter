@@ -71,7 +71,17 @@ CREATE TABLE IF NOT EXISTS prix (
     prix DECIMAL(10,2) NOT NULL,
     date DATE DEFAULT CURRENT_DATE,
     created_by UUID REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    -- Option premium : contact, localisation GPS et paiement
+    contact_phone VARCHAR(20),
+    contact_location TEXT,
+    contact_lat DOUBLE PRECISION,
+    contact_lng DOUBLE PRECISION,
+    is_premium BOOLEAN DEFAULT FALSE,
+    premium_amount INT,
+    payment_method TEXT,
+    payment_reference TEXT,
+    premium_paid_at TIMESTAMP
 );
 
 -- 5. Migrer created_by si vous aviez auth.users (optionnel)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
 import '../../services/database_service.dart';
 import '../../providers/auth_provider.dart';
@@ -360,64 +361,59 @@ class _ProduitDetailScreenState extends State<ProduitDetailScreen> {
     );
   }
 
-  Widget _buildPrixCard(Prix prix, NumberFormat numberFormat) {
+  void _showPrixDetail(Prix prix, NumberFormat numberFormat) {
     final dateFormat = DateFormat('dd/MM/yyyy');
+    final hasContact = prix.isPremium &&
+        (prix.contactPhone != null ||
+            prix.contactLocation != null ||
+            (prix.contactLat != null && prix.contactLng != null));
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(ctx).padding.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.store,
-                color: AppTheme.primaryGreen,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    prix.marche?.nom ?? 'Marché inconnu',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
+                  child: const Icon(
+                    Icons.store,
+                    color: AppTheme.primaryGreen,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
                       Text(
-                        prix.marche?.ville?.nom ?? '',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 14,
+                        prix.marche?.nom ?? 'Marché inconnu',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.calendar_today,
-                        size: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        dateFormat.format(prix.date),
+                        '${prix.marche?.ville?.nom ?? ''} • ${dateFormat.format(prix.date)}',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 14,
@@ -425,18 +421,178 @@ class _ProduitDetailScreenState extends State<ProduitDetailScreen> {
                       ),
                     ],
                   ),
+                ),
+                Text(
+                  '${numberFormat.format(prix.prix)} F',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryGreen,
+                  ),
+                ),
+              ],
+            ),
+            if (hasContact) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_pin_circle,
+                      color: AppTheme.primaryGreen, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Contacter l\'annonceur',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            Text(
-              '${numberFormat.format(prix.prix)} F',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryGreen,
-              ),
-            ),
+              const SizedBox(height: 12),
+              if (prix.contactPhone != null && prix.contactPhone!.isNotEmpty) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.phone, color: AppTheme.primaryGreen),
+                  title: const Text('Numéro'),
+                  subtitle: Text(prix.contactPhone!),
+                  onTap: () async {
+                    final uri = Uri.parse(
+                        'tel:${prix.contactPhone!.replaceAll(RegExp(r'[\s]'), '')}');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                ),
+              ],
+              if (prix.contactLocation != null &&
+                  prix.contactLocation!.isNotEmpty) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.location_on,
+                      color: AppTheme.primaryGreen),
+                  title: const Text('Localisation'),
+                  subtitle: Text(prix.contactLocation!),
+                ),
+              ],
+              if (prix.contactLat != null &&
+                  prix.contactLng != null &&
+                  (prix.contactLat != 0 || prix.contactLng != 0)) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final url =
+                        'https://www.google.com/maps?q=${prix.contactLat},${prix.contactLng}';
+                    final uri = Uri.parse(url);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  icon: const Icon(Icons.map),
+                  label: const Text('Ouvrir dans la carte'),
+                ),
+              ],
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrixCard(Prix prix, NumberFormat numberFormat) {
+    final dateFormat = DateFormat('dd/MM/yyyy');
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: InkWell(
+        onTap: () => _showPrixDetail(prix, numberFormat),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.store,
+                      color: AppTheme.primaryGreen,
+                      size: 24,
+                    ),
+                    if (prix.isPremium)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Icon(Icons.star,
+                            color: Colors.amber.shade700, size: 14),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      prix.marche?.nom ?? 'Marché inconnu',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          prix.marche?.ville?.nom ?? '',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          dateFormat.format(prix.date),
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${numberFormat.format(prix.prix)} F',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryGreen,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

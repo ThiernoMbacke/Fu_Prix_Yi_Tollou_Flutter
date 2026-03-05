@@ -122,12 +122,13 @@ class _AuthMethodScreenState extends State<AuthMethodScreen> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Spacer(),
+              const SizedBox(height: 24),
               // Logo/Illustration
               Container(
                 width: 150,
@@ -247,7 +248,7 @@ class _AuthMethodScreenState extends State<AuthMethodScreen> {
                   foregroundColor: AppTheme.textSecondary,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 24),
             ],
           ),
         ),
