@@ -1,5 +1,6 @@
 package com.fouprix.prixyi.exception
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.AccessDeniedException
@@ -45,6 +46,19 @@ class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ErrorBody> =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody(ex.message ?: "Requête invalide"))
+
+    /** Contrainte SQL (FK, unique, NOT NULL) — souvent FK created_by → public.users mal alignée sur Supabase. */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ErrorBody> {
+        val detail = ex.mostSpecificCause.message ?: ex.message ?: "Contrainte base de données"
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            ErrorBody(
+                "Enregistrement impossible : $detail. " +
+                    "Si la mention concerne une clé étrangère (created_by), exécutez le script " +
+                    "scripts/fix-produits-marches-fkey.sql dans Supabase (SQL Editor).",
+            ),
+        )
+    }
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorBody> {

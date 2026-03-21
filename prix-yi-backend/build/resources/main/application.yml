@@ -1,5 +1,13 @@
 server:
   port: 8080
+  ssl:
+    # true = HTTPS (keystore ci‑dessous). false = HTTP seul — pratique pour téléphone physique / LAN (voir README).
+    enabled: ${SSL_ENABLED:true}
+    # Keystore à placer dans: src/main/resources/keystore/prix-yi-keystore.p12
+    key-store: classpath:keystore/prix-yi-keystore.p12
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    # key-alias: prixyi # optionnel selon ton keystore
 
 spring:
   application:
@@ -13,7 +21,10 @@ spring:
       maximum-pool-size: 10
   jpa:
     hibernate:
-      ddl-auto: validate
+      # `validate` échoue souvent si le schéma Supabase ne colle pas exactement aux entités
+      # (NULL/NOT NULL implicites, TEXT vs varchar, colonnes historiques). Le schéma est géré en SQL.
+      # Pour forcer la validation : JPA_DDL_AUTO=validate (ou remplacer par validate ici).
+      ddl-auto: "${JPA_DDL_AUTO:none}"
     show-sql: false
     properties:
       hibernate:

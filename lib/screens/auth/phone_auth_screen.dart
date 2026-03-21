@@ -66,18 +66,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
   /// Retourne un message d'erreur user-friendly
   String _getErrorMessage(dynamic error) {
-    final errorStr = error.toString().toLowerCase();
-    
+    final raw = error.toString();
+    final errorStr = raw.toLowerCase();
+
+    if (raw.contains('Impossible de joindre le serveur') ||
+        errorStr.contains('socketexception') ||
+        errorStr.contains('connection refused') ||
+        errorStr.contains('failed host lookup')) {
+      return raw.startsWith('Exception: ')
+          ? raw.substring('Exception: '.length)
+          : raw;
+    }
     if (errorStr.contains('network') || errorStr.contains('connection')) {
-      return 'Problème de connexion internet. Vérifiez votre réseau.';
-    } else if (errorStr.contains('invalid-phone') || errorStr.contains('invalid')) {
-      return 'Numéro de téléphone invalide.';
+      return 'Problème de connexion au PC (réseau ou URL). Vérifiez « Configurer l\'URL » sur cet écran (retour) et le Wi‑Fi.';
+    } else if (errorStr.contains('invalid-phone') || errorStr.contains('numéro invalide')) {
+      return 'Numéro de téléphone invalide (Sénégal : 9 chiffres, préfixe 70, 71, 76, 77 ou 78).';
     } else if (errorStr.contains('too-many-requests')) {
       return 'Trop de tentatives. Réessayez dans quelques minutes.';
     } else if (errorStr.contains('code-expired')) {
       return 'Le code a expiré. Demandez un nouveau code.';
+    } else if (errorStr.contains('impossible d\'envoyer le sms')) {
+      return 'Envoi SMS impossible (Infobip / config). Utilisez Test1 sur l\'écran précédent ou regardez les logs du backend pour le code (mode simulé).';
     }
-    
+
+    if (raw.length < 200 && !raw.startsWith('Exception:')) return raw;
+    if (raw.startsWith('Exception: ')) return raw.substring('Exception: '.length);
     return 'Une erreur est survenue. Veuillez réessayer.';
   }
 

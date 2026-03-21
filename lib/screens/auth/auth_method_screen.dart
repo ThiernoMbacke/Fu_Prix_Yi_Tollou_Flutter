@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:fu_prix_yi_tollou_tay/config/api_config.dart';
 import 'package:fu_prix_yi_tollou_tay/config/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/backend_url_dialog.dart';
 import '../home/home_screen.dart';
 
 class AuthMethodScreen extends StatefulWidget {
@@ -28,8 +29,13 @@ class _AuthMethodScreenState extends State<AuthMethodScreen> {
         (route) => false,
       );
     } else {
-      final showConfig = auth.error != null &&
-          auth.error!.toLowerCase().contains('joindre le serveur');
+      final err = auth.error?.toLowerCase() ?? '';
+      final showConfig = err.contains('joindre') ||
+          err.contains('impossible de joindre') ||
+          err.contains('connection') ||
+          err.contains('socket') ||
+          err.contains('failed host') ||
+          err.contains('network');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(auth.error ?? 'Erreur connexion démo'),
@@ -38,77 +44,12 @@ class _AuthMethodScreenState extends State<AuthMethodScreen> {
               ? SnackBarAction(
                   label: 'Configurer',
                   textColor: Colors.white,
-                  onPressed: () => _showBackendUrlDialog(context),
+                  onPressed: () async {
+                    await showBackendUrlDialog(context);
+                    if (context.mounted) setState(() {});
+                  },
                 )
               : null,
-        ),
-      );
-    }
-  }
-
-  Future<void> _showBackendUrlDialog(BuildContext context) async {
-    final current = ApiConfig.baseUrl;
-    final controller = TextEditingController(text: current);
-    final formKey = GlobalKey<FormState>();
-
-    if (!context.mounted) return;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('URL du serveur'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Sur téléphone branché en USB, indiquez l\'IP de votre PC (ex. 192.168.1.203:8080). PC et téléphone sur le même Wi‑Fi.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'URL (ex. http://192.168.1.203:8080)',
-                  hintText: '192.168.1.203:8080',
-                ),
-                keyboardType: TextInputType.url,
-                autofillHints: const [AutofillHints.url],
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Indiquez l\'URL';
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(ctx).pop(true);
-              }
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
-
-    if (saved == true && controller.text.trim().isNotEmpty) {
-      await ApiConfig.setStoredBaseUrl(controller.text.trim());
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'URL enregistrée. Redémarrez l\'application pour l\'appliquer.',
-          ),
-          backgroundColor: AppTheme.primaryGreen,
         ),
       );
     }
@@ -239,13 +180,65 @@ class _AuthMethodScreenState extends State<AuthMethodScreen> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.dns, size: 20, color: AppTheme.textSecondary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Serveur actuel',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                          ),
+                          Text(
+                            ApiConfig.baseUrl,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryGreen,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Chrome : http://localhost:8080 · Téléphone : http://IP_DU_PC:8080 · '
+                'Backend : ./gradlew bootRun (profil local = HTTP).',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
               TextButton.icon(
-                onPressed: () => _showBackendUrlDialog(context),
+                onPressed: () async {
+                  await showBackendUrlDialog(context);
+                  if (mounted) setState(() {});
+                },
                 icon: const Icon(Icons.settings_ethernet, size: 18),
                 label: const Text('Configurer l\'URL du serveur'),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.textSecondary,
+                  foregroundColor: AppTheme.primaryGreen,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(height: 24),

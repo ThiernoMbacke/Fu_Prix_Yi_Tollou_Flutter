@@ -1,3 +1,10 @@
+server:
+  ssl:
+    enabled: true
+    key-store: classpath:keystore/prix-yi-keystore.p12
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+
 spring:
   jpa:
     show-sql: false

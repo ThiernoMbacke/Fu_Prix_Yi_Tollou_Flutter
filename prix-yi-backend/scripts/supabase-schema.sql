@@ -46,10 +46,18 @@ CREATE TABLE IF NOT EXISTS villes (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Régions du Sénégal (référence seule : pas d’API de création dans l’app)
+CREATE TABLE IF NOT EXISTS regions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nom TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS marches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nom TEXT NOT NULL,
     ville_id UUID REFERENCES villes(id) ON DELETE CASCADE,
+    adresse TEXT DEFAULT '' NOT NULL,
     latitude FLOAT,
     longitude FLOAT,
     created_by UUID REFERENCES users(id),
@@ -63,6 +71,13 @@ CREATE TABLE IF NOT EXISTS produits (
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Unicité (insensible à la casse) — aligné avec ProduitService / MarcheService
+CREATE UNIQUE INDEX IF NOT EXISTS produits_nom_categorie_lower_unique
+    ON produits (lower(trim(nom)), lower(trim(categorie)));
+CREATE UNIQUE INDEX IF NOT EXISTS marches_ville_nom_lower_unique
+    ON marches (ville_id, lower(trim(nom)))
+    WHERE ville_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS prix (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -94,15 +109,36 @@ INSERT INTO villes (nom) VALUES
   ('Dakar'), ('Thiès'), ('Kaolack'), ('Touba')
 ON CONFLICT (nom) DO NOTHING;
 
+-- 6b. Régions administratives du Sénégal (14) — gestion en base uniquement
+INSERT INTO regions (nom) VALUES
+  ('Dakar'),
+  ('Diourbel'),
+  ('Fatick'),
+  ('Kaffrine'),
+  ('Kaolack'),
+  ('Kédougou'),
+  ('Kolda'),
+  ('Louga'),
+  ('Matam'),
+  ('Saint-Louis'),
+  ('Sédhiou'),
+  ('Tambacounda'),
+  ('Thiès'),
+  ('Ziguinchor')
+ON CONFLICT (nom) DO NOTHING;
+
 -- 7. RLS (optionnel si tout passe par le backend)
 -- Pour garder Supabase Flutter en lecture seule sur villes/marches/produits/prix :
 ALTER TABLE villes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE marches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prix ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Lecture publique villes" ON villes;
 CREATE POLICY "Lecture publique villes" ON villes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Lecture publique regions" ON regions;
+CREATE POLICY "Lecture publique regions" ON regions FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Lecture publique marches" ON marches;
 CREATE POLICY "Lecture publique marches" ON marches FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Lecture publique produits" ON produits;

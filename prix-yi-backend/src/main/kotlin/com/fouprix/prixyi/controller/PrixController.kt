@@ -69,7 +69,6 @@ class PrixController(
             marcheId = marcheId,
             prix = BigDecimal.valueOf(prixValue),
             date = LocalDate.now(),
-            createdBy = userId,
             contactPhone = contactPhone,
             contactLocation = contactLocation,
             contactLat = contactLat,
@@ -79,7 +78,7 @@ class PrixController(
             premiumAmount = finalAmount,
             paymentMethod = finalPaymentMethod,
             premiumPaidAt = finalPaidAt,
-        )
+        ).apply { createdByUserId = userId }
         prixRepository.save(prix)
         userService.incrementContributions(userId)
         return ResponseEntity.ok(mapOf("success" to true, "id" to prix.id.toString()))

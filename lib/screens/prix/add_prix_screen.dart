@@ -8,6 +8,7 @@ import '../../services/database_service.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/app_theme.dart';
+import '../../widgets/backend_url_dialog.dart';
 import 'map_picker_screen.dart';
 
 class AddPrixScreen extends StatefulWidget {
@@ -26,6 +27,10 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
   final _contactPhoneController = TextEditingController();
   final _contactLocationController = TextEditingController();
   final _paymentReferenceController = TextEditingController();
+  final _newMarcheNomController = TextEditingController();
+  final _newMarcheAdresseController = TextEditingController();
+  final _newMarcheLatController = TextEditingController();
+  final _newMarcheLngController = TextEditingController();
 
   List<Ville> _villes = [];
   List<Marche> _marches = [];
@@ -35,6 +40,7 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
   String? _selectedMarcheId;
   bool _isLoading = false;
   bool _isLoadingData = true;
+  bool _isCreatingMarche = false;
   bool _isPremium = false;
   String? _paymentMethod; // 'ORANGE_MONEY', 'WAVE', 'CARD'
   double? _contactLat;
@@ -52,6 +58,10 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
     _contactPhoneController.dispose();
     _contactLocationController.dispose();
     _paymentReferenceController.dispose();
+    _newMarcheNomController.dispose();
+    _newMarcheAdresseController.dispose();
+    _newMarcheLatController.dispose();
+    _newMarcheLngController.dispose();
     super.dispose();
   }
 
@@ -94,6 +104,170 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
       _filteredMarches = _marches.where((m) => m.villeId == villeId).toList();
       _selectedMarcheId = null;
     });
+  }
+
+  Future<void> _showNewMarcheDialog() async {
+    final villeId = _selectedVilleId;
+    if (villeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choisissez d’abord une ville')),
+      );
+      return;
+    }
+
+    _newMarcheNomController.clear();
+    _newMarcheAdresseController.clear();
+    _newMarcheLatController.clear();
+    _newMarcheLngController.clear();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nouveau marché'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _newMarcheNomController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom du marché',
+                  hintText: 'Ex : Marché Sandaga',
+                ),
+                textCapitalization: TextCapitalization.words,
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _newMarcheAdresseController,
+                decoration: const InputDecoration(
+                  labelText: 'Adresse (optionnel)',
+                  hintText: 'Ex : Avenue Bourguiba, Dakar',
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _newMarcheLatController,
+                decoration: const InputDecoration(
+                  labelText: 'Latitude (optionnel)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+              ),
+              TextField(
+                controller: _newMarcheLngController,
+                decoration: const InputDecoration(
+                  labelText: 'Longitude (optionnel)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (_newMarcheNomController.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Créer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isCreatingMarche = true);
+    try {
+      final apiService = context.read<ApiService>();
+      double? lat;
+      double? lng;
+      final latStr = _newMarcheLatController.text.trim();
+      final lngStr = _newMarcheLngController.text.trim();
+      if (latStr.isNotEmpty) lat = double.tryParse(latStr.replaceAll(',', '.'));
+      if (lngStr.isNotEmpty) lng = double.tryParse(lngStr.replaceAll(',', '.'));
+
+      final newId = await apiService.addMarche(
+        nom: _newMarcheNomController.text.trim(),
+        villeId: villeId,
+        latitude: lat,
+        longitude: lng,
+        adresse: _newMarcheAdresseController.text.trim().isEmpty
+            ? null
+            : _newMarcheAdresseController.text.trim(),
+      );
+
+      final marches = await _dbService.getMarches();
+      if (!mounted) return;
+
+      var filtered = _marches.where((m) => m.villeId == villeId).toList();
+      final nomMarche = _newMarcheNomController.text.trim();
+      if (!filtered.any((m) => m.id == newId)) {
+        filtered = [
+          ...filtered,
+          Marche(
+            id: newId,
+            nom: nomMarche,
+            villeId: villeId,
+            adresse: _newMarcheAdresseController.text.trim().isEmpty
+                ? null
+                : _newMarcheAdresseController.text.trim(),
+          ),
+        ];
+      }
+
+      setState(() {
+        _marches = marches;
+        _filteredMarches = filtered;
+        _selectedMarcheId = newId;
+        _isCreatingMarche = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Marché créé. Vous pouvez enregistrer le prix.'),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      String msg = 'Erreur: $e';
+      if (e is DioException && e.response?.data is Map) {
+        final data = e.response!.data as Map<String, dynamic>;
+        if (data['message'] != null) msg = data['message'].toString();
+      }
+      final isConnectionError = e is DioException &&
+          (e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.red,
+          action: isConnectionError
+              ? SnackBarAction(
+                  label: 'Configurer l\'URL',
+                  textColor: Colors.white,
+                  onPressed: () => showBackendUrlDialog(context),
+                )
+              : null,
+        ),
+      );
+      setState(() => _isCreatingMarche = false);
+    }
   }
 
   Future<void> _savePrix() async {
@@ -200,10 +374,26 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
         final data = e.response!.data as Map<String, dynamic>;
         if (data['message'] != null) msg = data['message'].toString();
       }
+      final isConnectionError = e is DioException && (
+        e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout
+      ) || (e.toString().toLowerCase().contains('connection') ||
+          e.toString().toLowerCase().contains('socket') ||
+          e.toString().toLowerCase().contains('network') ||
+          e.toString().toLowerCase().contains('failed host'));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(msg),
           backgroundColor: Colors.red,
+          action: isConnectionError
+              ? SnackBarAction(
+                  label: 'Configurer l\'URL',
+                  textColor: Colors.white,
+                  onPressed: () => showBackendUrlDialog(context),
+                )
+              : null,
         ),
       );
     } finally {
@@ -332,11 +522,31 @@ class _AddPrixScreenState extends State<AddPrixScreen> {
                       },
                     ),
 
+                    if (_selectedVilleId != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _isCreatingMarche ? null : _showNewMarcheDialog,
+                          icon: _isCreatingMarche
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.add_circle_outline),
+                          label: Text(
+                            _isCreatingMarche ? 'Création…' : '+ Nouveau marché',
+                          ),
+                        ),
+                      ),
+                    ],
+
                     if (_selectedVilleId != null && _filteredMarches.isEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          'Aucun marché disponible pour cette ville',
+                          'Aucun marché pour cette ville — ajoutez-en un avec « + Nouveau marché ».',
                           style: TextStyle(
                             color: Colors.orange.shade700,
                             fontSize: 12,

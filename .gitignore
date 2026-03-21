@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# --- Fu Prix Yi Tollou : secrets & config locale ---
+/lib/config/supabase_config.dart
+/android/local.properties
+.env
+.env.*
+!.env.example
+
+# Keystore HTTPS (backend)
+/prix-yi-backend/src/main/resources/keystore/
+*.p12
+*.cer
+
+# Build Gradle backend (ne pas versionner les artefacts)
+/prix-yi-backend/build/
+/prix-yi-backend/.gradle/
+
+# Documentation interne (optionnel — décommentez si vous ne voulez pas la versionner)
+# /docs/
+# /prix-yi-backend/README.md

@@ -63,7 +63,20 @@ Remplacez le contenu de `pubspec.yaml` avec le fichier fourni, puis :
 flutter pub get
 ```
 
-### 3. Configurer Supabase
+### 3. Configurer Supabase (clés API)
+
+Le fichier **`lib/config/supabase_config.dart`** n’est **pas** versionné (contient l’URL et la clé anon de **votre** projet).
+
+1. Copiez le modèle :
+   ```bash
+   cp lib/config/supabase_config.example.dart lib/config/supabase_config.dart
+   ```
+2. Ouvrez `lib/config/supabase_config.dart` et renseignez **Project URL** et **anon public key** (dashboard Supabase → *Settings* → *API*).
+
+Si le fichier était déjà suivi par Git avec d’anciennes clés, retirez-le de l’index une fois :
+```bash
+git rm --cached lib/config/supabase_config.dart
+```
 
 #### A. Créer un projet Supabase
 

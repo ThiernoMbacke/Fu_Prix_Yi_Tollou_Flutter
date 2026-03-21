@@ -18,6 +18,7 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("jakarta.servlet:jakarta.servlet-api")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -35,4 +36,10 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Dev : profil « local » = HTTP:8080 (Chrome + téléphone). Pour la prod : SPRING_PROFILES_ACTIVE=prod
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    val profile = System.getenv("SPRING_PROFILES_ACTIVE") ?: "local"
+    systemProperty("spring.profiles.active", profile)
 }

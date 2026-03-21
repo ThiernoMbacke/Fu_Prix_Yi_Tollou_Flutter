@@ -1,6 +1,7 @@
 // lib/providers/auth_provider.dart
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 import '../services/auth_service.dart';
 import '../models/user_profile.dart';
 
@@ -28,7 +29,7 @@ class AuthProvider extends ChangeNotifier {
       final msg = e.response?.data;
       if (msg is Map && msg['message'] != null) return msg['message'].toString();
       if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
-        return 'Impossible de joindre le serveur. Vérifiez que le backend tourne (port 8080) et l\'URL dans api_config.dart (localhost ou 10.0.2.2 pour l\'émulateur).';
+        return 'Impossible de joindre le serveur à ${ApiConfig.baseUrl}. Même Wi‑Fi que le PC ? Backend lancé sur le PC ? Appuyez sur « Configurer » pour changer l\'URL.';
       }
     }
     return e.toString();
@@ -65,13 +66,15 @@ class AuthProvider extends ChangeNotifier {
       final result = await _authService.signInWithPhone(phoneNumber);
       if (result['success'] != true) {
         _error = result['message'] ?? 'Erreur lors de l\'envoi du code';
+        throw Exception(_error);
       }
     } catch (e) {
-      _error = e.toString();
+      _error = _extractErrorMessage(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   /// Vérifier le code OTP (téléphone) et récupérer le profil.
@@ -87,7 +90,7 @@ class AuthProvider extends ChangeNotifier {
       await _authService.verifyOTP(phone: phone, token: token);
       await loadUserProfile();
     } catch (e) {
-      _error = e.toString();
+      _error = _extractErrorMessage(e);
       notifyListeners();
       rethrow;
     }

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
-import '../models/user_profile.dart';
+import '../models/models.dart';
 import 'token_storage.dart';
 
 /// Réponses auth
@@ -40,6 +40,10 @@ class ApiService {
         )) {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        // Toujours lire ApiConfig : après « Configurer l'URL », l'instance Dio gardait l'ancienne base.
+        final base = ApiConfig.baseUrl;
+        _dio.options.baseUrl = base;
+        options.baseUrl = base;
         final token = await _tokenStorage.getAccessToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -59,10 +63,17 @@ class ApiService {
   final TokenStorage _tokenStorage;
   final Dio _dio;
 
+  /// À appeler avant chaque requête : garantit que [Dio] utilise la dernière URL ([ApiConfig]).
+  void _syncBaseUrl() {
+    final b = ApiConfig.baseUrl;
+    _dio.options.baseUrl = b;
+  }
+
   Future<Response<dynamic>?> _refreshAndRetry(RequestOptions requestOptions) async {
     final refresh = await _tokenStorage.getRefreshToken();
     if (refresh == null || refresh.isEmpty) return null;
     try {
+      _syncBaseUrl();
       final response = await _dio.post<Map<String, dynamic>>(
         ApiConfig.refreshTokenPath,
         data: {'refreshToken': refresh},
@@ -82,6 +93,7 @@ class ApiService {
 
   /// POST /api/auth/send-otp
   Future<void> sendOtp(String phoneNumber) async {
+    _syncBaseUrl();
     final response = await _dio.post(
       ApiConfig.sendOtpPath,
       data: {'phoneNumber': phoneNumber.trim().replaceAll(' ', '')},
@@ -93,6 +105,7 @@ class ApiService {
 
   /// POST /api/auth/demo → connexion sans code (test1 ou test2)
   Future<AuthTokens> demoLogin(String demoUser) async {
+    _syncBaseUrl();
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConfig.demoLoginPath,
       data: {'demoUser': demoUser},
@@ -104,6 +117,7 @@ class ApiService {
 
   /// POST /api/auth/verify-otp → tokens + user
   Future<AuthTokens> verifyOtp(String phoneNumber, String code) async {
+    _syncBaseUrl();
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConfig.verifyOtpPath,
       data: {
@@ -120,6 +134,7 @@ class ApiService {
   Future<void> logout() async {
     final refresh = await _tokenStorage.getRefreshToken();
     try {
+      _syncBaseUrl();
       await _dio.post(ApiConfig.logoutPath, data: refresh != null ? {'refreshToken': refresh} : null);
     } finally {
       await _tokenStorage.clear();
@@ -129,6 +144,7 @@ class ApiService {
   /// GET /api/users/me
   Future<UserProfile?> getMe() async {
     try {
+      _syncBaseUrl();
       final response = await _dio.get<Map<String, dynamic>>(ApiConfig.mePath);
       final data = response.data;
       if (data == null) return null;
@@ -141,6 +157,7 @@ class ApiService {
 
   /// PUT /api/users/me
   Future<void> updateMe({String? nom}) async {
+    _syncBaseUrl();
     await _dio.put(ApiConfig.mePath, data: {'nom': nom});
   }
 
@@ -173,7 +190,60 @@ class ApiService {
       data['paymentMethod'] = paymentMethod;
       data['paymentReference'] = paymentReference;
     }
+    _syncBaseUrl();
     await _dio.post(ApiConfig.prixPath, data: data);
+  }
+
+  /// POST /api/marches — crée un marché (JWT requis).
+  /// Retourne l’id du marché créé.
+  Future<String> addMarche({
+    required String nom,
+    required String villeId,
+    double? latitude,
+    double? longitude,
+    String? adresse,
+  }) async {
+    final payload = <String, dynamic>{
+      'nom': nom.trim(),
+      'villeId': villeId,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (adresse != null && adresse.trim().isNotEmpty) 'adresse': adresse.trim(),
+    };
+    _syncBaseUrl();
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConfig.marchesPath,
+      data: payload,
+    );
+    final data = response.data;
+    final id = data?['id']?.toString();
+    if (id == null || id.isEmpty) {
+      throw Exception('Réponse serveur invalide (marché)');
+    }
+    return id;
+  }
+
+  /// POST /api/produits — crée un produit (JWT requis).
+  Future<Produit> addProduit({
+    required String nom,
+    required String categorie,
+  }) async {
+    _syncBaseUrl();
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConfig.produitsPath,
+      data: {
+        'nom': nom.trim(),
+        'categorie': categorie.trim(),
+      },
+    );
+    final data = response.data;
+    final id = data?['id']?.toString();
+    final nomOut = data?['nom']?.toString();
+    final catOut = data?['categorie']?.toString();
+    if (id == null || id.isEmpty || nomOut == null || catOut == null) {
+      throw Exception('Réponse serveur invalide (produit)');
+    }
+    return Produit(id: id, nom: nomOut, categorie: catOut);
   }
 
   /// Vérifie si on a un token (sans appeler le serveur).

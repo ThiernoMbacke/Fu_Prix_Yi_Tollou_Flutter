@@ -1,5 +1,8 @@
 // lib/services/auth_service.dart
 // Auth via backend API (JWT), plus Supabase pour les données en lecture.
+import 'package:dio/dio.dart';
+
+import '../config/api_config.dart';
 import '../models/user_profile.dart';
 import 'api_service.dart';
 import 'token_storage.dart';
@@ -16,11 +19,27 @@ class AuthService {
   /// True si un access token est présent (sans vérifier la validité côté serveur).
   Future<bool> get isAuthenticated => _apiService.hasToken();
 
+  static String _dioMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map && data['message'] != null) {
+      return data['message'].toString();
+    }
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout) {
+      return 'Impossible de joindre le serveur à ${ApiConfig.baseUrl}. '
+          'Sur le téléphone : écran connexion → « Configurer l\'URL du serveur » → '
+          'http://VOTRE_IP:8080 (IPv4 du PC : ipconfig). Même Wi‑Fi, backend lancé, pare-feu (port 8080).';
+    }
+    return e.message ?? e.toString();
+  }
+
   /// Envoyer le code OTP au numéro (backend → SMS Infobip/Orange).
   Future<Map<String, dynamic>> signInWithPhone(String phoneNumber) async {
     try {
       await _apiService.sendOtp(phoneNumber);
       return {'success': true, 'message': 'Code envoyé avec succès'};
+    } on DioException catch (e) {
+      throw Exception(_dioMessage(e));
     } catch (e) {
       throw Exception('Erreur lors de l\'envoi du code: $e');
     }
@@ -37,6 +56,8 @@ class AuthService {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       );
+    } on DioException catch (e) {
+      throw Exception(_dioMessage(e));
     } catch (e) {
       throw Exception('Code incorrect ou expiré: $e');
     }

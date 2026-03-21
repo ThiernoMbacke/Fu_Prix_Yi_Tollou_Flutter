@@ -1,0 +1,18 @@
+# Profil « local » : backend en HTTP sur le port 8080 (pas de TLS).
+# Utilisé pour le dev sur le même poste (Chrome) et sur téléphone physique (IP LAN),
+# sans certificat ni mélange http/https.
+#
+# Activé automatiquement par ./gradlew bootRun sauf si SPRING_PROFILES_ACTIVE est déjà défini.
+# Déploiement prod : lancer avec --spring.profiles.active=prod (ou sans profil local) et SSL activé.
+
+spring:
+  config:
+    activate:
+      on-profile: local
+
+server:
+  # Écouter sur toutes les interfaces : le téléphone sur le Wi‑Fi peut joindre le PC par son IP LAN.
+  address: 0.0.0.0
+  port: 8080
+  ssl:
+    enabled: false

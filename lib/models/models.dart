@@ -39,6 +39,7 @@ class Marche {
   final String villeId;
   final double? latitude;
   final double? longitude;
+  final String? adresse;
   final String? createdBy;
   final DateTime? createdAt;
   
@@ -51,6 +52,7 @@ class Marche {
     required this.villeId,
     this.latitude,
     this.longitude,
+    this.adresse,
     this.createdBy,
     this.createdAt,
     this.ville,
@@ -61,8 +63,9 @@ class Marche {
       id: json['id'] as String,
       nom: json['nom'] as String,
       villeId: json['ville_id'] as String,
-      latitude: json['latitude'] as double?,
-      longitude: json['longitude'] as double?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      adresse: json['adresse'] as String?,
       createdBy: json['created_by'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -79,6 +82,7 @@ class Marche {
       'ville_id': villeId,
       'latitude': latitude,
       'longitude': longitude,
+      if (adresse != null) 'adresse': adresse,
       'created_by': createdBy,
     };
   }

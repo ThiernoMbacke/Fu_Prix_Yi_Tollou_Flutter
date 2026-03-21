@@ -51,6 +51,15 @@ class _AppLoaderState extends State<_AppLoader> {
   Future<void> _init() async {
     try {
       await ApiConfig.init();
+      if (SupabaseConfig.isPlaceholderConfiguration) {
+        throw StateError(
+          'Configuration Supabase incomplète (fichier lib/config/supabase_config.dart).\n\n'
+          '• supabaseUrl : https://<référence>.supabase.co — même ref que dans l’hôte Postgres '
+          '(db.<ref>.supabase.co → https://<ref>.supabase.co). Dashboard → Settings → API → Project URL.\n'
+          '• supabaseAnonKey : clé « anon » « public » (très longue), même écran.\n\n'
+          'Sans cela, les requêtes partent vers une fausse URL → net::ERR_NAME_NOT_RESOLVED.',
+        );
+      }
       await Supabase.initialize(
         url: SupabaseConfig.supabaseUrl,
         anonKey: SupabaseConfig.supabaseAnonKey,

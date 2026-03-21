@@ -2,9 +2,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_config_platform_io.dart' if (dart.library.html) 'api_config_platform_web.dart' as _platform;
 
-/// Configuration de l'API backend. S'adapte automatiquement au contexte
-/// (Web, émulateur Android, simulateur iOS, appareil physique).
-/// Sur appareil physique, l'utilisateur peut enregistrer l'URL du PC (ex. 192.168.1.203:8080).
+/// Configuration de l'API backend. S'adapte automatiquement au contexte :
+/// - Chrome / Web : localhost:8080
+/// - Émulateur Android : 10.0.2.2:8080
+/// - Appareil physique (Samsung, iPhone) : voir [kPhysicalDeviceHost] dans api_config_platform_io.dart
+///   (mettez l'IP de votre PC, ex. 192.168.1.203, pour que Test1/Test2 marchent sur le téléphone).
+/// L'utilisateur peut aussi enregistrer une URL via « Configurer l'URL du serveur » (prioritaire).
 class ApiConfig {
   ApiConfig._();
 
@@ -34,8 +37,11 @@ class ApiConfig {
     return s;
   }
 
+  /// Pour tester une URL saisie avant de l’enregistrer (dialogue « Configurer le serveur »).
+  static String normalizeBackendUrl(String url) => _normalizeUrl(url);
+
   /// Enregistre une URL personnalisée (ex. pour téléphone en USB sur le même Wi‑Fi).
-  /// Après enregistrement, redémarrer l'application pour que le backend utilise cette URL.
+  /// [ApiService] applique cette URL à chaque requête (pas besoin de redémarrer l'app).
   static Future<void> setStoredBaseUrl(String? url) async {
     final prefs = await SharedPreferences.getInstance();
     if (url == null || url.trim().isEmpty) {
@@ -62,4 +68,6 @@ class ApiConfig {
   static const String demoLoginPath = '/api/auth/demo';
   static const String mePath = '/api/users/me';
   static const String prixPath = '/api/prix';
+  static const String marchesPath = '/api/marches';
+  static const String produitsPath = '/api/produits';
 }

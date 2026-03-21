@@ -22,20 +22,18 @@ class Prix(
     @Column(nullable = false, precision = 10, scale = 2)
     val prix: BigDecimal,
 
-    @Column(nullable = false)
-    val date: LocalDate = LocalDate.now(),
+    /** Script SQL : `date` sans NOT NULL */
+    @Column
+    val date: LocalDate? = LocalDate.now(),
 
-    @Column(name = "created_by")
-    val createdBy: UUID? = null,
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now(),
+    @Column(name = "created_at", updatable = false, insertable = false)
+    val createdAt: Instant? = null,
 
     // Option premium : coordonnées et paiement
     @Column(name = "contact_phone")
     val contactPhone: String? = null,
 
-    @Column(name = "contact_location")
+    @Column(name = "contact_location", columnDefinition = "text")
     val contactLocation: String? = null,
 
     @Column(name = "contact_lat")
@@ -44,18 +42,22 @@ class Prix(
     @Column(name = "contact_lng")
     val contactLng: Double? = null,
 
-    @Column(name = "is_premium", nullable = false)
+    /** Script SQL : `is_premium` sans NOT NULL */
+    @Column(name = "is_premium")
     val isPremium: Boolean = false,
 
     @Column(name = "premium_amount")
     val premiumAmount: Int? = null,
 
-    @Column(name = "payment_method")
+    @Column(name = "payment_method", columnDefinition = "text")
     val paymentMethod: String? = null,
 
-    @Column(name = "payment_reference")
+    @Column(name = "payment_reference", columnDefinition = "text")
     val paymentReference: String? = null,
 
     @Column(name = "premium_paid_at")
     val premiumPaidAt: Instant? = null,
-)
+) {
+    @Transient
+    var createdByUserId: UUID? = null
+}

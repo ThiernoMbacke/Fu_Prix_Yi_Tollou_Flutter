@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../config/app_theme.dart';
 import '../auth/phone_auth_screen.dart';
 import '../produit/produit_detail_screen.dart';
+import '../produit/add_produit_screen.dart';
 import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -84,6 +85,36 @@ class _HomeScreenState extends State<HomeScreen> {
     final isAuthenticated = authProvider.isAuthenticatedSync;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          if (!isAuthenticated) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Connectez-vous pour proposer un nouveau produit.',
+                ),
+                action: SnackBarAction(
+                  label: 'Connexion',
+                  onPressed: () => Navigator.pushNamed(context, '/auth-method'),
+                ),
+              ),
+            );
+            return;
+          }
+          final created = await Navigator.push<Produit>(
+            context,
+            MaterialPageRoute(builder: (_) => const AddProduitScreen()),
+          );
+          if (created != null && mounted) {
+            await _loadData();
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Nouveau produit'),
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+      ),
       appBar: AppBar(
         title: const Text('Fou Prix Yi Tollou'),
         actions: [
@@ -178,9 +209,30 @@ class _HomeScreenState extends State<HomeScreen> {
                             'Produits',
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
-                          Text(
-                            '${_produits.length} produits',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isAuthenticated)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    final created = await Navigator.push<Produit>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const AddProduitScreen(),
+                                      ),
+                                    );
+                                    if (created != null && mounted) {
+                                      await _loadData();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.add, size: 20),
+                                  label: const Text('Nouveau'),
+                                ),
+                              Text(
+                                '${_produits.length} produits',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
                           ),
                         ],
                       ),
